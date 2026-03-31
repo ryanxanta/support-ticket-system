@@ -118,6 +118,7 @@ def seed_data():
     print("✅ Seed data inserted.")
 
 
+app = create_app()   # 👈 ADD THIS
+
 if __name__ == '__main__':
-    app = create_app()
     app.run(debug=True, port=5000)
