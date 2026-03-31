@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Welcome, {{ current_user.username }} 👋</h1>
+    <p class="page-subtitle">{{ customer.company_name }}</p>
+  </div>
+
+  <!-- Purchased Software Support Cards -->
+  <h2 class="card-title mb-3">Purchased Software Status</h2>
+  <div class="stats-grid mb-6">
+    {% for cs in customer.software_links %}
+    {% set sw_status = 'Active' if cs.support_end >= today else 'Expired' %}
+    <div class="stat-card" style="border-left: 4px solid {{ 'var(--success)' if sw_status == 'Active' else 'var(--danger)' }}; background: var(--bg-card);">
+      <div class="stat-icon {{ 'green' if sw_status == 'Active' else 'red' }}">
+        {{ '🟢' if sw_status == 'Active' else '🔴' }}
+      </div>
+      <div>
+        <div class="stat-value" style="font-size:1.2rem;">{{ cs.software.name }}</div>
+        <div class="stat-label" style="margin-top:0.3rem;">
+          {% if sw_status == 'Active' %}
+            <span style="color:var(--success);">Active until:</span> {{ cs.support_end.strftime('%d %B %Y') }}
+          {% else %}
+            <span style="color:var(--danger);">Expired on:</span> {{ cs.support_end.strftime('%d %B %Y') }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="stat-card">
+      <div class="stat-icon yellow">⚠️</div>
+      <div>
+        <div class="stat-value" style="font-size:1.2rem;">No Software</div>
+        <div class="stat-label">You have not purchased any software yet.</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="stats-grid mb-6">
+    <div class="stat-card">
+      <div class="stat-icon purple">🎫</div>
+      <div>
+        <div class="stat-value">{{ recent_tickets | length }}</div>
+        <div class="stat-label">Recent Tickets</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✅</div>
+      <div>
+        <div class="stat-value">{{ recent_tickets | selectattr('status', 'eq', 'Closed') | list | length }}</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">⏳</div>
+      <div>
+        <div class="stat-value">{{ recent_tickets | rejectattr('status', 'eq', 'Closed') | list | length }}</div>
+        <div class="stat-label">Open / In Progress</div>
+      </div>
+    </div>
+    <div class="stat-card" style="cursor:pointer;" onclick="location.href='{{ url_for('customer.submit_ticket') }}'">
+      <div class="stat-icon blue">➕</div>
+      <div>
+        <div class="stat-value" style="font-size:1.1rem; margin-top:0.3rem;">New</div>
+        <div class="stat-label">Submit Ticket</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Tickets -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="card-title" style="margin-bottom:0;">Recent Tickets</h2>
+      <a href="{{ url_for('customer.ticket_history') }}" class="btn btn-ghost btn-sm">View All →</a>
+    </div>
+
+    {% if recent_tickets %}
+    <div class="ticket-grid">
+      {% for ticket in recent_tickets %}
+      <a href="{{ url_for('customer.ticket_detail', ticket_id=ticket.id) }}" style="text-decoration:none;">
+        <div class="ticket-card priority-{{ ticket.priority }}">
+          <div class="flex items-center justify-between">
+            <span class="ticket-no">{{ ticket.ticket_no }}</span>
+            <span class="badge badge-{{ ticket.status.lower().replace(' ', '') }}">{{ ticket.status }}</span>
+          </div>
+          <div class="ticket-software">🖥️ {{ ticket.software.name }}</div>
+          <div class="ticket-desc">{{ ticket.description }}</div>
+          <div class="ticket-footer">
+            <span>{{ ticket.created_at.strftime('%d %b %Y') }}</span>
+            {% if ticket.support_status_at_creation == 'Expired' %}
+            <span class="badge badge-expired" style="font-size:0.65rem;">Expired at creation</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <h3>No tickets yet</h3>
+      <p>Submit your first support ticket to get started.</p>
+      <a href="{{ url_for('customer.submit_ticket') }}" class="btn btn-primary mt-4">Submit Ticket</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- AJAX Silent Polling Dashboard -->
+<script>
+  function reloadDashboard() {
+    fetch(window.location.href, {headers: {"X-Requested-With": "XMLHttpRequest"}})
+      .then(r => r.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        let oldGrid = document.querySelector('.ticket-grid');
+        let oldEmpty = document.querySelector('.empty-state');
+        let newGrid = doc.querySelector('.ticket-grid');
+        let newEmpty = doc.querySelector('.empty-state');
+        
+        if (oldGrid && newGrid) oldGrid.outerHTML = newGrid.outerHTML;
+        else if (oldEmpty && newGrid) oldEmpty.outerHTML = newGrid.outerHTML;
+        else if (oldGrid && newEmpty) oldGrid.outerHTML = newEmpty.outerHTML;
+        else if (oldEmpty && newEmpty) oldEmpty.outerHTML = newEmpty.outerHTML;
+
+        let oldStats = document.querySelector('.stats-grid');
+        let newStats = doc.querySelector('.stats-grid');
+        if (oldStats && newStats) oldStats.outerHTML = newStats.outerHTML;
+      })
+      .catch(e => console.error("Auto-reload failed", e));
+  }
+  setInterval(reloadDashboard, 10000);
+</script>
+{% endblock %}

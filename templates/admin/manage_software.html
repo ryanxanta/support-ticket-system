@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Manage Software / Skills{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="page-title">Manage Software</h1>
+        <p class="page-subtitle">{{ all_software | length }} software types available</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-modal="modal-add-software">➕ Add Software</button>
+    </div>
+  </div>
+
+  <div class="card">
+    {% if all_software %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Software Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sw in all_software %}
+          <tr>
+            <td style="width: 80px;" class="text-muted">#{{ sw.id }}</td>
+            <td class="font-semibold">{{ sw.name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">🖥️</div>
+      <h3>No software types found</h3>
+      <p>Add your first software type to assign to staff and customers.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Add Software Modal -->
+<div class="modal-overlay" id="modal-add-software">
+  <div class="modal">
+    <div class="modal-title">➕ Add Software Type</div>
+    <form method="POST" action="{{ url_for('admin.create_software') }}">
+      <div class="form-group">
+        <label class="form-label" for="new-software-name">Software Name</label>
+        <input id="new-software-name" name="name" type="text" class="form-control" placeholder="e.g. SQL POS" required autofocus />
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">This will be available to assign as a skill to Staff, and as a product to Customers.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close>Cancel</button>
+        <button type="submit" id="btn-create-sw" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

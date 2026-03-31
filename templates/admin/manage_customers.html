@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Manage Customers{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="page-title">Manage Customers</h1>
+        <p class="page-subtitle">{{ customers | length }} registered companies</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-modal="modal-add-customer">➕ Add Customer</button>
+    </div>
+  </div>
+
+  {% if customers %}
+  <div style="display:flex; flex-direction:column; gap:1rem;">
+    {% for cust in customers %}
+    {% set sup_status = 'Active' if cust.support_end >= today else 'Expired' %}
+    <div class="card">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <div class="stat-icon {{ 'green' if sup_status == 'Active' else 'red' }}" style="width:42px;height:42px;">🏢</div>
+          <div>
+            <div class="font-semibold">{{ cust.company_name }}</div>
+            <div class="text-xs text-muted">📞 {{ cust.phone_number }}</div>
+            <div class="text-xs text-muted">
+              Support: {{ cust.support_start.strftime('%d %b %Y') }} → {{ cust.support_end.strftime('%d %b %Y') }}
+              &nbsp;<span class="badge {{ 'badge-active' if sup_status == 'Active' else 'badge-expired' }}">{{ sup_status }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Software Assigned -->
+        <div style="flex:1; padding:0 1rem;">
+          <div class="text-xs text-muted mb-2">Software:</div>
+          <div class="flex gap-2 flex-wrap">
+            {% if cust.software_links %}
+              {% for cs in cust.software_links %}
+              <span class="badge badge-assigned">{{ cs.software.name }}</span>
+              {% endfor %}
+            {% else %}
+            <span class="text-xs text-muted">None assigned</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" class="btn btn-ghost btn-sm" data-modal="modal-sw-{{ cust.id }}">✏️ Software</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Software Modal -->
+    <div class="modal-overlay" id="modal-sw-{{ cust.id }}">
+      <div class="modal">
+        <div class="modal-title">✏️ Software — {{ cust.company_name }}</div>
+        <form method="POST" action="{{ url_for('admin.update_customer_software', customer_id=cust.id) }}">
+          <div class="form-group">
+            <label class="form-label">Assign Software</label>
+            <div class="checkbox-list" style="display:flex; flex-direction:column; gap:0.5rem;">
+              {% for sw in all_software %}
+              {% set cs = cust.software_links | selectattr('software_id', 'eq', sw.id) | first %}
+              <div style="display:flex; align-items:center; gap:0.5rem; border:1px solid var(--border-color); padding:0.5rem; border-radius:0.5rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; width:150px; font-size:0.9rem;">
+                  <input type="checkbox" name="software_ids" value="{{ sw.id }}" {{ 'checked' if cs }}>
+                  {{ sw.name }}
+                </label>
+                <div style="display:flex; flex-direction:column;">
+                  <label class="text-xs text-muted" style="margin-bottom:0.1rem;">Start Date</label>
+                  <input type="date" name="start_{{ sw.id }}" value="{{ cs.support_start.strftime('%Y-%m-%d') if cs else cust.support_start.strftime('%Y-%m-%d') }}" class="form-control" style="padding:0.2rem; font-size:0.8rem; width:120px;">
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                  <label class="text-xs text-muted" style="margin-bottom:0.1rem;">End Date</label>
+                  <input type="date" name="end_{{ sw.id }}" value="{{ cs.support_end.strftime('%Y-%m-%d') if cs else cust.support_end.strftime('%Y-%m-%d') }}" class="form-control" style="padding:0.2rem; font-size:0.8rem; width:120px;">
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" data-modal-close>Cancel</button>
+            <button type="submit" id="btn-save-sw-{{ cust.id }}" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">🏢</div>
+    <h3>No customers yet</h3>
+    <p>Add your first customer company.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="modal-add-customer">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title">➕ Add Customer</div>
+    <form method="POST" action="{{ url_for('admin.create_customer') }}">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="company_name">Company Name</label>
+          <input id="company_name" name="company_name" type="text" class="form-control" placeholder="ABC Sdn Bhd" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone_number">Phone (with country code)</label>
+          <input id="phone_number" name="phone_number" type="text" class="form-control" placeholder="60123456789" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="support_start">Support Start</label>
+          <input id="support_start" name="support_start" type="date" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="support_end">Support End</label>
+          <input id="support_end" name="support_end" type="date" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_username">Login Username</label>
+          <input id="cust_username" name="username" type="text" class="form-control" placeholder="abc_user" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_password">Login Password</label>
+          <input id="cust_password" name="password" type="password" class="form-control" placeholder="••••••••" required />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close>Cancel</button>
+        <button type="submit" id="btn-create-customer" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block title %}Staff Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Staff Dashboard</h1>
+    <p class="page-subtitle">Welcome back, {{ current_user.username }} · {{ current_user.skills | length }} software skills</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <a href="?tab=unassigned" class="tab-btn {{ 'active' if tab == 'unassigned' }}">📥 Unassigned</a>
+    <a href="?tab=my_tickets" class="tab-btn {{ 'active' if tab == 'my_tickets' }}">📌 My Tickets</a>
+    <a href="?tab=unresolved" class="tab-btn {{ 'active' if tab == 'unresolved' }}">🔓 Unresolved</a>
+    <a href="?tab=transfers" class="tab-btn {{ 'active' if tab == 'transfers' }}">
+      🔁 Transfers
+      {% if transfer_count > 0 %}<span class="tab-count">{{ transfer_count }}</span>{% endif %}
+    </a>
+    <a href="?tab=customer_assigned" class="tab-btn {{ 'active' if tab == 'customer_assigned' }}">
+      ⭐ Preferred
+      {% if customer_assigned_count > 0 %}<span class="tab-count">{{ customer_assigned_count }}</span>{% endif %}
+    </a>
+  </div>
+
+  <!-- Transfer Requests Tab -->
+  {% if tab == 'transfers' %}
+    {% if transfers %}
+    <div class="ticket-grid">
+      {% for tr in transfers %}
+      <div class="ticket-card">
+        <div class="flex items-center justify-between">
+          <span class="ticket-no">{{ tr.ticket.ticket_no }}</span>
+          <span class="badge badge-pending">Pending Transfer</span>
+        </div>
+        <div class="ticket-company">{{ tr.ticket.company.company_name }}</div>
+        <div class="ticket-software">🖥️ {{ tr.ticket.software.name }}</div>
+        <div class="ticket-desc">{{ tr.ticket.description }}</div>
+        {% if tr.reason %}
+        <div style="font-size:0.8rem; color:var(--text-muted); font-style:italic;">Reason: {{ tr.reason }}</div>
+        {% endif %}
+        <div class="flex gap-2 mt-4">
+          <form method="POST" action="{{ url_for('staff.approve_transfer', request_id=tr.id) }}">
+            <button type="submit" id="btn-approve-{{ tr.id }}" class="btn btn-success btn-sm">✅ Accept</button>
+          </form>
+          <form method="POST" action="{{ url_for('staff.reject_transfer', request_id=tr.id) }}">
+            <button type="submit" id="btn-reject-{{ tr.id }}" class="btn btn-danger btn-sm">❌ Reject</button>
+          </form>
+          <a href="{{ url_for('staff.ticket_detail', ticket_id=tr.ticket_id) }}" class="btn btn-ghost btn-sm">View →</a>
+        </div>
+        <div class="ticket-footer">
+          <span>From: {{ tr.from_staff.username }}</span>
+          <span>{{ tr.created_at.strftime('%d %b %Y') }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">🔁</div>
+      <h3>No pending transfer requests</h3>
+      <p>You'll see transfer requests directed to you here.</p>
+    </div>
+    {% endif %}
+
+  <!-- Ticket Tabs -->
+  {% else %}
+    {% if tickets %}
+    <div class="ticket-grid">
+      {% for ticket in tickets %}
+      <a href="{{ url_for('staff.ticket_detail', ticket_id=ticket.id) }}" style="text-decoration:none;">
+        <div class="ticket-card priority-{{ ticket.priority }}">
+          <div class="flex items-center justify-between">
+            <span class="ticket-no">{{ ticket.ticket_no }}</span>
+            <span class="badge badge-{{ ticket.status.lower().replace(' ','') }}">{{ ticket.status }}</span>
+          </div>
+          <div class="ticket-company">{{ ticket.company.company_name }}</div>
+          <div class="ticket-software">🖥️ {{ ticket.software.name }}</div>
+          <div class="ticket-desc">{{ ticket.description }}</div>
+          <div class="ticket-meta">
+            <span class="badge priority-badge-{{ ticket.priority }}">{{ ticket.priority }}</span>
+            {% if ticket.support_status_at_creation == 'Expired' %}
+            <span class="badge badge-expired">🔴 Expired Support</span>
+            {% endif %}
+            {% if ticket.preferred_staff_id and ticket.preferred_status == 'Pending' %}
+            <span class="badge badge-pending">⭐ Preferred: {{ ticket.preferred_staff.username }}</span>
+            {% endif %}
+          </div>
+          <div class="ticket-footer">
+            <span>{{ ticket.created_at.strftime('%d %b %Y') }}</span>
+            {% if ticket.assignee %}
+            <span>👤 {{ ticket.assignee.username }}</span>
+            {% else %}
+            <span style="color:var(--text-muted);">Unassigned</span>
+            {% endif %}
+          </div>
+
+          <!-- Customer Assigned: Accept/Reject inline -->
+          {% if tab == 'customer_assigned' %}
+          <div class="flex gap-2" style="margin-top:0.5rem;" onclick="event.preventDefault();">
+            <form method="POST" action="{{ url_for('staff.accept_preferred', ticket_id=ticket.id) }}">
+              <button type="submit" id="btn-accept-pref-{{ ticket.id }}" class="btn btn-success btn-sm">✅ Accept</button>
+            </form>
+            <form method="POST" action="{{ url_for('staff.reject_preferred', ticket_id=ticket.id) }}">
+              <button type="submit" id="btn-reject-pref-{{ ticket.id }}" class="btn btn-danger btn-sm">❌ Reject</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <h3>No tickets found</h3>
+      <p>Nothing here in this category right now.</p>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<!-- AJAX Silent Polling Dashboard -->
+<script>
+  function reloadDashboard() {
+    fetch(window.location.href, {headers: {"X-Requested-With": "XMLHttpRequest"}})
+      .then(r => r.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Find the block that holds the tickets (everything below tabs)
+        let oldGrid = document.querySelector('.ticket-grid');
+        let oldEmpty = document.querySelector('.empty-state');
+        let newGrid = doc.querySelector('.ticket-grid');
+        let newEmpty = doc.querySelector('.empty-state');
+        
+        let container = document.querySelector('.tabs').parentNode;
+        
+        if (oldGrid && newGrid) {
+          oldGrid.outerHTML = newGrid.outerHTML;
+        } else if (oldEmpty && newGrid) {
+          oldEmpty.outerHTML = newGrid.outerHTML;
+        } else if (oldGrid && newEmpty) {
+          oldGrid.outerHTML = newEmpty.outerHTML;
+        } else if (oldEmpty && newEmpty) {
+          oldEmpty.outerHTML = newEmpty.outerHTML;
+        }
+
+        // Also update tab counts
+        let oldTabs = document.querySelector('.tabs');
+        let newTabs = doc.querySelector('.tabs');
+        if (oldTabs && newTabs) {
+          oldTabs.innerHTML = newTabs.innerHTML;
+        }
+      })
+      .catch(e => console.error("Auto-reload failed", e));
+  }
+  setInterval(reloadDashboard, 10000);
+</script>
+{% endblock %}

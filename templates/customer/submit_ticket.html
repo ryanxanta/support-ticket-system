@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Submit Ticket{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Submit Support Ticket</h1>
+    <p class="page-subtitle">{{ customer.company_name }}</p>
+  </div>
+
+  {% if status == 'Expired' %}
+  <div class="support-banner expired mb-6">
+    <div class="icon">⚠️</div>
+    <div>
+      <div class="title">Support Expired</div>
+      <div class="subtitle">Your support expired on {{ customer.support_end.strftime('%d %B %Y') }}. You can still submit tickets, but we recommend renewing your support plan.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div style="width:100%;">
+    <div class="card">
+      <form method="POST" enctype="multipart/form-data">
+
+        <div class="form-group">
+          <label class="form-label" for="software_id">Software / Product</label>
+          <select id="software_id" name="software_id" class="form-control" required>
+            <option value="">-- Select Software --</option>
+            {% for cs in owned_software %}
+            <option value="{{ cs.software_id }}">{{ cs.software.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Issue Description</label>
+          <textarea id="description" name="description" class="form-control" placeholder="Describe your issue in detail…" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="attachment">Attachment (optional)</label>
+          <input id="attachment" name="attachment" type="file" class="form-control"
+                 accept=".pdf,.png,.jpg,.jpeg,.gif,.docx,.xlsx,.zip" />
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Accepted: PDF, Images, DOCX, XLSX, ZIP. Max 16MB.</div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 class="mb-3" style="font-size:1.1rem;">Remote Access (Optional)</h3>
+        
+        <div class="grid-2 gap-4">
+          <div class="form-group">
+            <label class="form-label" for="remote_tool">Remote Tool</label>
+            <select id="remote_tool" name="remote_tool" class="form-control">
+              <option value="">-- None --</option>
+              <option value="UltraViewer">UltraViewer</option>
+              <option value="TeamViewer">TeamViewer</option>
+              <option value="AnyDesk">AnyDesk</option>
+              <option value="RustDesk">RustDesk</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+          </div>
+        </div>
+        
+        <div class="grid-2 gap-4">
+          <div class="form-group">
+            <label class="form-label" for="remote_id">Remote ID</label>
+            <input id="remote_id" name="remote_id" type="text" class="form-control" placeholder="e.g. 12 345 678" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="remote_password">Remote Password</label>
+            <input id="remote_password" name="remote_password" type="text" class="form-control" placeholder="e.g. a8b9c" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="preferred_staff_id">Preferred Support Staff (optional)</label>
+          <select id="preferred_staff_id" name="preferred_staff_id" class="form-control">
+            <option value="">-- None --</option>
+          </select>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Select a software first to see available staff.</div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="flex gap-3">
+          <button type="submit" id="btn-submit-ticket" class="btn btn-primary btn-lg">🎫 Submit Ticket</button>
+          <a href="{{ url_for('customer.dashboard') }}" class="btn btn-ghost btn-lg">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

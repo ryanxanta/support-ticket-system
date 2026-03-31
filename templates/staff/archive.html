@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Closed Archive{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">📁 Closed Archive</h1>
+    <p class="page-subtitle">Filter and review historically completed tickets</p>
+  </div>
+
+  <!-- Filter Panel -->
+  <div class="card mb-6">
+    <form method="GET" action="{{ url_for('staff.archive') }}" class="flex gap-4 items-center flex-wrap">
+      <div class="form-group mb-0" style="flex:1; min-width:200px;">
+        <label class="form-label">Company</label>
+        <select name="company_id" class="form-control">
+          <option value="">All Companies</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}" {{ 'selected' if company_id|string == c.id|string }}>{{ c.company_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group mb-0" style="flex:1; min-width:150px;">
+        <label class="form-label">From Date</label>
+        <input type="date" name="from_date" class="form-control" value="{{ from_date or '' }}">
+      </div>
+
+      <div class="form-group mb-0" style="flex:1; min-width:150px;">
+        <label class="form-label">To Date</label>
+        <input type="date" name="to_date" class="form-control" value="{{ to_date or '' }}">
+      </div>
+
+      <div class="flex gap-2" style="align-self: flex-end;">
+        <button type="submit" class="btn btn-primary">🔍 Filter</button>
+        <a href="{{ url_for('staff.archive') }}" class="btn btn-ghost">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results -->
+  {% if tickets %}
+    <div class="ticket-grid">
+      {% for ticket in tickets %}
+      <a href="{{ url_for('staff.ticket_detail', ticket_id=ticket.id) }}" style="text-decoration:none;">
+        <div class="ticket-card" style="border-top: 3px solid var(--text-muted);">
+          <div class="flex items-center justify-between">
+            <span class="ticket-no">{{ ticket.ticket_no }}</span>
+            <span class="badge badge-closed">CLOSED</span>
+          </div>
+          <div class="ticket-company">{{ ticket.company.company_name }}</div>
+          <div class="ticket-software">🖥️ {{ ticket.software.name }}</div>
+          <div class="ticket-desc">{{ ticket.description }}</div>
+          
+          <div class="flex flex-column gap-1 mt-2" style="font-size:0.75rem; color:var(--text-secondary);">
+            <div>📅 Submitted: {{ ticket.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+            <div style="color:var(--success); font-weight:600;">🔒 Closed: {{ ticket.closed_at.strftime('%d %b %Y, %H:%M') if ticket.closed_at else 'N/A' }}</div>
+          </div>
+
+          <div class="ticket-footer">
+            <span>👤 {{ ticket.assignee.username if ticket.assignee else 'Unassigned' }}</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon">📁</div>
+      <h3>No archived tickets</h3>
+      <p>Try adjusting your search filters or check back later.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

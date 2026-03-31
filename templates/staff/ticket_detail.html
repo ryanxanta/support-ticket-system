@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}{{ ticket.ticket_no }} — Staff{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div class="flex items-center gap-3 mb-2">
+      <a href="{{ url_for('staff.dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+      <span class="ticket-no" style="font-size:1rem;">{{ ticket.ticket_no }}</span>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <h1 class="page-title" style="font-size:1.4rem;">{{ ticket.company.company_name }} — {{ ticket.software.name }}</h1>
+      <span class="badge badge-{{ ticket.status.lower().replace(' ','') }}">{{ ticket.status }}</span>
+      {% if ticket.support_status_at_creation == 'Expired' %}
+      <span class="badge badge-expired">🔴 Expired Support</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 300px; gap:1.5rem; align-items:start;">
+
+    <!-- Left: Conversation -->
+    <div>
+      <div class="card mb-4">
+        <div class="card-title">📋 Issue Description</div>
+        <p style="color:var(--text-secondary); font-size:0.9rem;">{{ ticket.description }}</p>
+        {% if ticket.attachment %}
+        <div class="mt-4">
+          <span class="text-xs text-muted">📎 Attachment:</span>
+          <a href="/uploads/{{ ticket.attachment }}" class="btn btn-ghost btn-sm" style="margin-left:0.5rem;" target="_blank">{{ ticket.attachment }}</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-title">💬 Conversation</div>
+        <div class="conversation">
+          {% for reply in ticket.replies %}
+          <div class="message {{ reply.sender }}" data-id="{{ reply.id }}">
+            <div>{{ reply.message }}</div>
+            <div class="message-meta">{{ reply.sender_name }} · {{ reply.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% if not ticket.replies %}
+        <div id="no-reply-text" style="color:var(--text-muted); font-size:0.875rem; text-align:center; padding:1.5rem 0;">No replies yet.</div>
+        {% endif %}
+
+        {% if ticket.assigned_to == current_user.id and ticket.status != 'Closed' %}
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('staff.reply_ticket', ticket_id=ticket.id) }}">
+          <div class="form-group">
+            <label class="form-label" for="message">Reply to Customer</label>
+            <textarea id="message" name="message" class="form-control" placeholder="Type your response…" required></textarea>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" id="btn-staff-reply" class="btn btn-primary">Send Reply</button>
+            <a href="{{ wa_url }}" target="_blank" class="btn btn-whatsapp">💬 WhatsApp</a>
+          </div>
+        </form>
+        {% elif ticket.status == 'Closed' %}
+        <div style="text-align:center; padding:1rem; font-size:0.875rem; color:var(--text-muted);">This ticket is closed.</div>
+        {% else %}
+        <div style="text-align:center; padding:1rem; font-size:0.875rem; color:var(--text-muted);">Only the assigned staff can reply.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: Actions Panel -->
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+
+      <!-- Ticket Info -->
+      <div class="card">
+        <div class="card-title">🎫 Ticket Info</div>
+        <div style="display:flex; flex-direction:column; gap:0.65rem; font-size:0.82rem;">
+          <div class="flex justify-between"><span class="text-muted">Submitted by</span><span>{{ ticket.submitter.username }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">Company</span><span>{{ ticket.company.company_name }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">Phone</span><span>{{ ticket.company.phone_number }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">Date</span><span>{{ ticket.created_at.strftime('%d %b %Y, %H:%M') }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">Assignee</span>
+            <span>{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}-{% endif %}</span>
+          </div>
+          {% if ticket.remote_tool and ticket.remote_tool != 'None' and ticket.remote_tool != '' %}
+          <div class="divider" style="margin: 0.5rem 0;"></div>
+          <div style="font-weight: 600; margin-bottom: 0.3rem;">Remote Connection</div>
+          <div class="flex justify-between"><span class="text-muted">Tool</span><span>{{ ticket.remote_tool }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">ID</span><span style="user-select: all;">{{ ticket.remote_id or '-' }}</span></div>
+          <div class="flex justify-between"><span class="text-muted">Pass</span><span style="user-select: all;">{{ ticket.remote_password or '-' }}</span></div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Staff Remarks -->
+      <div class="card" style="background: var(--bg-card); border-left: 4px solid var(--primary);">
+        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>📝</span> Internal Log
+        </h3>
+        <form action="{{ url_for('staff.update_remark', ticket_id=ticket.id) }}" method="POST">
+          <textarea name="staff_remark" class="form-control" rows="4" placeholder="Notes (invisible to customer)..." style="font-size:0.85rem;">{{ ticket.staff_remark or '' }}</textarea>
+          <button type="submit" class="btn btn-primary btn-sm mt-2" style="width: 100%;">Save Log</button>
+        </form>
+      </div>
+
+      <!-- Actions -->
+      {% if ticket.status != 'Closed' %}
+      <div class="card">
+        <div class="card-title">⚡ Actions</div>
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+
+          <!-- Assign to Me -->
+          {% if not ticket.assigned_to %}
+          <form method="POST" action="{{ url_for('staff.assign_ticket', ticket_id=ticket.id) }}">
+            <button type="submit" id="btn-assign-me" class="btn btn-primary btn-full">📌 Assign to Me</button>
+          </form>
+          {% endif %}
+
+          <!-- Close Ticket -->
+          {% if ticket.assigned_to == current_user.id %}
+          <form method="POST" action="{{ url_for('staff.close_ticket', ticket_id=ticket.id) }}" onsubmit="return confirm('Close this ticket?')">
+            <button type="submit" id="btn-close-ticket" class="btn btn-success btn-full">✅ Close Ticket</button>
+          </form>
+          {% endif %}
+
+          <!-- Request Transfer -->
+          {% if ticket.assigned_to == current_user.id and compatible_staff %}
+          {% if active_transfer %}
+          <div class="badge badge-pending" style="justify-content:center; padding:0.5rem;">🔁 Transfer Pending to {{ active_transfer.to_staff.username }}</div>
+          {% else %}
+          <button type="button" id="btn-open-transfer" class="btn btn-warning btn-full" data-modal="modal-transfer">🔁 Request Transfer</button>
+          {% endif %}
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Preferred Staff -->
+      {% if ticket.preferred_status == 'Pending' and ticket.preferred_staff_id == current_user.id %}
+      <div class="card">
+        <div class="card-title">⭐ Customer Request</div>
+        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:1rem;">Customer requested you specifically for this ticket.</p>
+        <div class="flex gap-2">
+          <form method="POST" action="{{ url_for('staff.accept_preferred', ticket_id=ticket.id) }}">
+            <button type="submit" id="btn-accept-pref" class="btn btn-success btn-sm">Accept</button>
+          </form>
+          <form method="POST" action="{{ url_for('staff.reject_preferred', ticket_id=ticket.id) }}">
+            <button type="submit" id="btn-reject-pref" class="btn btn-danger btn-sm">Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <a href="{{ wa_url }}" target="_blank" class="btn btn-whatsapp btn-full">💬 Reply via WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal">
+    <div class="modal-title">🔁 Request Transfer</div>
+    <form method="POST" id="transfer-form" action="{{ url_for('staff.request_transfer', ticket_id=ticket.id) }}">
+      <div class="form-group">
+        <label class="form-label">Transfer To</label>
+        <select name="to_staff_id" class="form-control" required>
+          <option value="">-- Select Staff --</option>
+          {% for s in compatible_staff %}
+          <option value="{{ s.id }}">{{ s.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason (optional)</label>
+        <textarea name="reason" class="form-control" placeholder="Why are you transferring this ticket?"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close>Cancel</button>
+        <button type="submit" id="btn-confirm-transfer" class="btn btn-primary">Send Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+@media(max-width:800px){
+  div[style*="grid-template-columns:1fr 300px"]{
+    display:flex!important; flex-direction:column!important;
+  }
+}
+</style>
+
+<script>
+  function pollNewMessages() {
+    let lastMsgId = 0;
+    const msgs = document.querySelectorAll('.message[data-id]');
+    if (msgs.length > 0) {
+      lastMsgId = parseInt(msgs[msgs.length - 1].getAttribute('data-id'));
+    }
+    
+    fetch('{{ url_for("staff.api_ticket_replies", ticket_id=ticket.id) }}?after=' + lastMsgId)
+      .then(r => r.json())
+      .then(data => {
+        if(data.replies && data.replies.length > 0) {
+          const conv = document.querySelector('.conversation');
+          const noReplyText = document.getElementById('no-reply-text');
+          if(noReplyText) noReplyText.style.display = 'none';
+          
+          data.replies.forEach(reply => {
+            const div = document.createElement('div');
+            div.className = `message ${reply.sender}`;
+            div.setAttribute('data-id', reply.id);
+            div.innerHTML = `<div>${reply.message}</div><div class="message-meta">${reply.sender_name} · ${reply.time}</div>`;
+            conv.appendChild(div);
+          });
+          // Auto-scroll
+          conv.scrollTop = conv.scrollHeight;
+        }
+      })
+      .catch(err => console.error('Polling error:', err));
+  }
+  
+  setInterval(pollNewMessages, 4000);
+</script>
+{% endblock %}

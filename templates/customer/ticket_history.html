@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}My Tickets{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="page-title">My Tickets</h1>
+        <p class="page-subtitle">All your submitted support tickets</p>
+      </div>
+      <a href="{{ url_for('customer.submit_ticket') }}" class="btn btn-primary">➕ New Ticket</a>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="tabs">
+    <a href="?status=all" class="tab-btn {{ 'active' if status_filter == 'all' }}">All</a>
+    <a href="?status=Open" class="tab-btn {{ 'active' if status_filter == 'Open' }}">Open</a>
+    <a href="?status=Assigned" class="tab-btn {{ 'active' if status_filter == 'Assigned' }}">Assigned</a>
+    <a href="?status=In Progress" class="tab-btn {{ 'active' if status_filter == 'In Progress' }}">In Progress</a>
+    <a href="?status=Closed" class="tab-btn {{ 'active' if status_filter == 'Closed' }}">Closed</a>
+  </div>
+
+  {% if tickets %}
+  <div class="ticket-grid">
+    {% for ticket in tickets %}
+    <a href="{{ url_for('customer.ticket_detail', ticket_id=ticket.id) }}" style="text-decoration:none;">
+      <div class="ticket-card priority-{{ ticket.priority }}">
+        <div class="flex items-center justify-between">
+          <span class="ticket-no">{{ ticket.ticket_no }}</span>
+          <span class="badge badge-{{ ticket.status.lower().replace(' ','') }}">{{ ticket.status }}</span>
+        </div>
+        <div class="ticket-software">🖥️ {{ ticket.software.name }}</div>
+        <div class="ticket-desc">{{ ticket.description }}</div>
+        <div class="ticket-meta">
+          {% if ticket.support_status_at_creation == 'Expired' %}
+          <span class="badge badge-expired">Expired at creation</span>
+          {% endif %}
+          {% if ticket.preferred_status == 'Pending' %}
+          <span class="badge badge-pending">⭐ Preferred Pending</span>
+          {% elif ticket.preferred_status == 'Accepted' %}
+          <span class="badge badge-accepted">⭐ Preferred Accepted</span>
+          {% elif ticket.preferred_status == 'Rejected' %}
+          <span class="badge badge-rejected">⭐ Preferred Rejected</span>
+          {% endif %}
+        </div>
+        <div class="ticket-footer">
+          <span>{{ ticket.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+          {% if ticket.assignee %}
+          <span>👤 {{ ticket.assignee.username }}</span>
+          {% else %}
+          <span style="color:var(--text-muted);">Unassigned</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">📭</div>
+    <h3>No tickets found</h3>
+    <p>No tickets match this filter.</p>
+    <a href="{{ url_for('customer.submit_ticket') }}" class="btn btn-primary mt-4">Submit Ticket</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

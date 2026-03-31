@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Admin Dashboard</h1>
+    <p class="page-subtitle">System overview and management</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid mb-6">
+    <div class="stat-card">
+      <div class="stat-icon purple">🎫</div>
+      <div><div class="stat-value">{{ total_tickets }}</div><div class="stat-label">Total Tickets</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">🔓</div>
+      <div><div class="stat-value">{{ open_tickets }}</div><div class="stat-label">Open Tickets</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">👥</div>
+      <div><div class="stat-value">{{ total_customers }}</div><div class="stat-label">Customers</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue">🧑‍💼</div>
+      <div><div class="stat-value">{{ total_staff }}</div><div class="stat-label">Support Staff</div></div>
+    </div>
+  </div>
+
+  <!-- Quick Navigation -->
+  <div class="grid-2 mb-6">
+    <a href="{{ url_for('admin.manage_staff') }}" style="text-decoration:none;">
+      <div class="card" style="text-align:center; padding:2rem; cursor:pointer;">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">🧑‍💼</div>
+        <div class="font-semibold" style="font-size:1rem;">Manage Staff</div>
+        <div class="text-sm text-muted mt-4">Add staff, assign skills</div>
+      </div>
+    </a>
+    <a href="{{ url_for('admin.manage_customers') }}" style="text-decoration:none;">
+      <div class="card" style="text-align:center; padding:2rem; cursor:pointer;">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">🏢</div>
+        <div class="font-semibold" style="font-size:1rem;">Manage Customers</div>
+        <div class="text-sm text-muted mt-4">Add customers, assign software</div>
+      </div>
+    </a>
+    <a href="{{ url_for('admin.manage_software') }}" style="text-decoration:none;">
+      <div class="card" style="text-align:center; padding:2rem; cursor:pointer;">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">🖥️</div>
+        <div class="font-semibold" style="font-size:1rem;">Manage Software</div>
+        <div class="text-sm text-muted mt-4">Add new software / skill types</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Recent Tickets -->
+  <div class="card">
+    <div class="card-title">🎫 Recent Tickets</div>
+    {% if recent_tickets %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticket No</th>
+            <th>Company</th>
+            <th>Software</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in recent_tickets %}
+          <tr>
+            <td><span class="ticket-no">{{ ticket.ticket_no }}</span></td>
+            <td>{{ ticket.company.company_name }}</td>
+            <td>{{ ticket.software.name }}</td>
+            <td><span class="badge badge-{{ ticket.status.lower().replace(' ','') }}">{{ ticket.status }}</span></td>
+            <td>{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+            <td>{{ ticket.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+            <td>
+              <button type="button" class="btn btn-ghost btn-sm" data-modal="modal-override-{{ ticket.id }}">Override</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <h3>No tickets yet</h3>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Override Modals -->
+{% for ticket in recent_tickets %}
+<div class="modal-overlay" id="modal-override-{{ ticket.id }}">
+  <div class="modal">
+    <div class="modal-title">🔧 Override Ticket {{ ticket.ticket_no }}</div>
+    <form method="POST" action="{{ url_for('admin.override_ticket', ticket_id=ticket.id) }}">
+      <div class="form-group">
+        <label class="form-label">Reassign To</label>
+        <select name="staff_id" class="form-control" required>
+          <option value="">-- Select Staff --</option>
+          {% for s in all_staff %}
+          <option value="{{ s.id }}">{{ s.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close>Cancel</button>
+        <button type="submit" id="btn-override-{{ ticket.id }}" class="btn btn-danger">Override</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

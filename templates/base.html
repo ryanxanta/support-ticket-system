@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}SupportDesk{% endblock %} | SupportDesk</title>
+  <meta name="description" content="Professional support ticket management system with skill-based routing and WhatsApp integration." />
+  {% block meta %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<nav class="navbar">
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <button class="mobile-menu-btn" onclick="document.querySelector('.navbar-nav').classList.toggle('open')">☰</button>
+    <a href="#" class="navbar-brand">
+      <span class="logo-icon">🎫</span>
+      SupportDesk
+    </a>
+  </div>
+
+  <ul class="navbar-nav">
+    {% if current_user.__class__.__name__ == 'User' %}
+      <li><a href="{{ url_for('customer.dashboard') }}" class="{{ 'active' if request.endpoint == 'customer.dashboard' }}">Dashboard</a></li>
+      <li><a href="{{ url_for('customer.submit_ticket') }}" class="{{ 'active' if request.endpoint == 'customer.submit_ticket' }}">New Ticket</a></li>
+      <li><a href="{{ url_for('customer.ticket_history') }}" class="{{ 'active' if request.endpoint == 'customer.ticket_history' }}">My Tickets</a></li>
+    {% elif current_user.__class__.__name__ == 'StaffUser' %}
+      {% if current_user.role == 'admin' %}
+        <li><a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">Dashboard</a></li>
+        <li><a href="{{ url_for('admin.manage_staff') }}" class="{{ 'active' if request.endpoint == 'admin.manage_staff' }}">Staff</a></li>
+        <li><a href="{{ url_for('admin.manage_customers') }}" class="{{ 'active' if request.endpoint == 'admin.manage_customers' }}">Customers</a></li>
+        <li><a href="{{ url_for('admin.manage_software') }}" class="{{ 'active' if request.endpoint == 'admin.manage_software' }}">Software</a></li>
+      {% else %}
+        <li><a href="{{ url_for('staff.dashboard') }}" class="{{ 'active' if request.endpoint == 'staff.dashboard' }}">Dashboard</a></li>
+        <li><a href="{{ url_for('staff.archive') }}" class="{{ 'active' if request.endpoint == 'staff.archive' }}">Archive</a></li>
+      {% endif %}
+    {% endif %}
+  </ul>
+
+  <div class="navbar-user">
+    <div class="avatar">{{ current_user.username[0].upper() }}</div>
+    <span>{{ current_user.username }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">Logout</a>
+  </div>
+</nav>
+{% endif %}
+
+<!-- Flash Messages -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% for category, message in messages %}
+      <div class="flash-msg {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+{% block content %}{% endblock %}
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

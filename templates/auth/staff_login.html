@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Staff Login{% endblock %}
+{% block content %}
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🧑‍💼</div>
+      <h1>Staff Portal</h1>
+      <p>Support & Admin Login</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.staff_login') }}">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input id="username" name="username" type="text" class="form-control" placeholder="Enter your username" required autofocus />
+      </div>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" name="password" type="password" class="form-control" placeholder="••••••••" required />
+      </div>
+      <button type="submit" id="btn-staff-login" class="btn btn-primary btn-full btn-lg">Sign In</button>
+    </form>
+
+    <div class="divider"></div>
+    <p style="text-align:center; font-size:0.82rem; color:var(--text-muted);">
+      Customer? <a href="{{ url_for('auth.login') }}">Login here →</a>
+    </p>
+
+    <div style="margin-top:1.5rem; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; font-size:0.78rem; color:var(--text-muted);">
+      <div class="font-semibold" style="margin-bottom:0.4rem; color:var(--text-secondary);">Demo Credentials</div>
+      <div>admin / admin123 (Admin)</div>
+      <div>john / john123 (Support)</div>
+      <div>sarah / sarah123 (Support)</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
